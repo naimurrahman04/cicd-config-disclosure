@@ -4,43 +4,84 @@ info:
   name: Exposed CI/CD Configuration Files
   author: naimur-rahman
   severity: medium
-  description: Detects exposed CI/CD-related files like Jenkinsfile, .env, .git/config
-  tags: exposure,ci,cd,config,disclosure
+  description: |
+    Detects publicly exposed CI/CD-related configuration files across multiple platforms.
+    These files can leak internal deployment processes, credentials, API keys, or secret tokens.
+    The template supports Jenkins, GitHub Actions, GitLab CI, Bitbucket Pipelines, CircleCI,
+    Travis CI, Drone CI, Azure Pipelines, Docker, and more.
+  tags: ci,cd,devops,config,exposure,disclosure,jenkins,docker,git,github,gitlab,secrets
 
 requests:
   - method: GET
     path:
-      - "{{BaseURL}}/Jenkinsfile"
       - "{{BaseURL}}/.env"
+      - "{{BaseURL}}/.env.local"
+      - "{{BaseURL}}/.env.production"
+      - "{{BaseURL}}/.env.dev"
+      - "{{BaseURL}}/Jenkinsfile"
       - "{{BaseURL}}/.git/config"
-      - "{{BaseURL}}/Dockerfile"
-      - "{{BaseURL}}/pipeline/"
       - "{{BaseURL}}/.gitignore"
       - "{{BaseURL}}/.npmrc"
+      - "{{BaseURL}}/.yarnrc"
+      - "{{BaseURL}}/Dockerfile"
       - "{{BaseURL}}/buildspec.yml"
       - "{{BaseURL}}/.circleci/config.yml"
       - "{{BaseURL}}/.github/workflows/main.yml"
+      - "{{BaseURL}}/.github/workflows/deploy.yml"
+      - "{{BaseURL}}/.gitlab-ci.yml"
+      - "{{BaseURL}}/bitbucket-pipelines.yml"
+      - "{{BaseURL}}/.drone.yml"
+      - "{{BaseURL}}/.travis.yml"
+      - "{{BaseURL}}/azure-pipelines.yml"
+      - "{{BaseURL}}/codefresh.yml"
+      - "{{BaseURL}}/werf.yaml"
+      - "{{BaseURL}}/.bamboo-specs"
+      - "{{BaseURL}}/.teamcity/settings.kts"
+      - "{{BaseURL}}/.tekton/pipeline.yaml"
+      - "{{BaseURL}}/.config.yml"
+      - "{{BaseURL}}/.ci.yml"
 
     headers:
-      User-Agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+      User-Agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0 Safari/537.36"
 
+    stop-at-first-match: true
+
+    matchers-condition: or
     matchers:
+
       - type: word
+        name: ci-cd-identifiers
+        part: body
         words:
-          - "node"
           - "pipeline"
-          - "docker"
-          - "env"
-          - "FROM"
           - "stages"
           - "jobs"
+          - "workflow"
+          - "docker"
+          - "FROM"
+          - "node:"
+          - "ENV"
+          - "image:"
+          - "trigger:"
+          - "steps:"
+          - "script:"
+          - "deploy:"
         condition: or
+
+      - type: regex
+        name: secrets-patterns
+        part: body
+        regex:
+          - "(?i)(api[_-]?key|secret|token|access[_-]?key|auth[_-]?token|client[_-]?secret|passwd|password)[\\s:=]+[\"']?[A-Za-z0-9\\-_=\\+]{8,}[\"']?"
+
+      - type: status
+        name: success-status
+        status:
+          - 200
 
     extractors:
       - type: regex
-        name: exposed-content
+        name: leaked-contents
         part: body
         regex:
-          - '(?i)(node|pipeline|FROM|stages|jobs|ENV|groovy)'
-
-    stop-at-first-match: true
+          - "(?i)(pipeline|FROM|docker|steps|jobs|token|key|secret|stages|workflow|ENV|node:|trigger:)"
