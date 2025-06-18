@@ -1,0 +1,46 @@
+id: cicd-config-disclosure
+
+info:
+  name: Exposed CI/CD Configuration Files
+  author: naimur-rahman
+  severity: medium
+  description: Detects exposed CI/CD-related files like Jenkinsfile, .env, .git/config
+  tags: exposure,ci,cd,config,disclosure
+
+requests:
+  - method: GET
+    path:
+      - "{{BaseURL}}/Jenkinsfile"
+      - "{{BaseURL}}/.env"
+      - "{{BaseURL}}/.git/config"
+      - "{{BaseURL}}/Dockerfile"
+      - "{{BaseURL}}/pipeline/"
+      - "{{BaseURL}}/.gitignore"
+      - "{{BaseURL}}/.npmrc"
+      - "{{BaseURL}}/buildspec.yml"
+      - "{{BaseURL}}/.circleci/config.yml"
+      - "{{BaseURL}}/.github/workflows/main.yml"
+
+    headers:
+      User-Agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+
+    matchers:
+      - type: word
+        words:
+          - "node"
+          - "pipeline"
+          - "docker"
+          - "env"
+          - "FROM"
+          - "stages"
+          - "jobs"
+        condition: or
+
+    extractors:
+      - type: regex
+        name: exposed-content
+        part: body
+        regex:
+          - '(?i)(node|pipeline|FROM|stages|jobs|ENV|groovy)'
+
+    stop-at-first-match: true
